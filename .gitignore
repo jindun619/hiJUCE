@@ -1,0 +1,14 @@
+# Build folder
+/Builds/
+
+# macOS-specific files
+.DS_Store
+
+# Windows-specific files
+Thumbs.db
+
+# JUCE-specific files
+*.user
+*.log
+*.o
+*.a

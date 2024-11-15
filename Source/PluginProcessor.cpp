@@ -150,6 +150,8 @@ void HiJUCEAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     // the samples and the outer loop is handling the channels.
     // Alternatively, you can process the samples with the channels
     // interleaved by keeping the same state.
+
+    const float distortionAmount = 10.0f;
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
         auto* channelData = buffer.getWritePointer (channel);
@@ -157,24 +159,14 @@ void HiJUCEAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
         // ..do something to the data...
         for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
         {
-            // 클리핑 임계값 설정
-            float threshold = 0.8f;  // 0.8은 클리핑 임계값
-            float gain = 1.5f;       // 왜곡 강도 (필요에 따라 조절)
+            // Simple distortion: Apply clipping based on the distortion amount
+            float sampleValue = channelData[sample];
 
-            // 사인파형 비선형 변형 (강화된 왜곡)
-            float distortedSample = channelData[sample] * gain;
+            // Apply a simple tanh-based distortion (can be adjusted for more extreme effects)
+            sampleValue = std::tanh(sampleValue * distortionAmount);
 
-            // 하드 클리핑 처리 (0.8 이상의 값은 0.8로 제한)
-            if (distortedSample > threshold)
-                distortedSample = threshold;
-            else if (distortedSample < -threshold)
-                distortedSample = -threshold;
-
-            // 추가적인 사인파 형태의 비선형 변형 적용 (이것이 왜곡 효과를 강화)
-            distortedSample = std::sin(distortedSample * 3.14159f);  // 사인파 형태로 변형
-
-            // 변형된 샘플을 버퍼에 다시 저장
-            channelData[sample] = distortedSample;
+            // Assign the processed sample back to the buffer
+            channelData[sample] = sampleValue;
         }
     }
 }

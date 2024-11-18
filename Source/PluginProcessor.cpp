@@ -19,7 +19,7 @@ HiJUCEAudioProcessor::HiJUCEAudioProcessor()
                       #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
-                       )
+                       ), treeState(*this, nullptr, "PARAMETERS", createParameterLayout())
 #endif
 {
 }
@@ -27,6 +27,18 @@ HiJUCEAudioProcessor::HiJUCEAudioProcessor()
 HiJUCEAudioProcessor::~HiJUCEAudioProcessor()
 {
 }
+
+juce::AudioProcessorValueTreeState::ParameterLayout HiJUCEAudioProcessor::createParameterLayout()
+{
+    std::vector <std::unique_ptr<juce::RangedAudioParameter>> params;
+    
+    auto pGain = std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{"gain", 1}, "Gain", -24.0, 24.0, 0.0);
+    
+    params.push_back(std::move(pGain));
+    
+    return { params.begin(), params.end() };
+}
+
 
 //==============================================================================
 const juce::String HiJUCEAudioProcessor::getName() const
@@ -135,23 +147,12 @@ void HiJUCEAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
-    // In case we have more outputs than inputs, this code clears any output
-    // channels that didn't contain input data, (because these aren't
-    // guaranteed to be empty - they may contain garbage).
-    // This is here to avoid people getting screaming feedback
-    // when they first compile a plugin, but obviously you don't need to keep
-    // this code if your algorithm always overwrites all the output channels.
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
-    // This is the place where you'd normally do the guts of your plugin's
-    // audio processing...
-    // Make sure to reset the state if your inner loop is processing
-    // the samples and the outer loop is handling the channels.
-    // Alternatively, you can process the samples with the channels
-    // interleaved by keeping the same state.
-
-    const float distortionAmount = 10.0f;
+    float dbGain = *treeState.getRawParameterValue("gain");
+    float rawGain = juce::Decibels::decibelsToGain(dbGain);
+    
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
         auto* channelData = buffer.getWritePointer (channel);
@@ -159,14 +160,7 @@ void HiJUCEAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
         // ..do something to the data...
         for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
         {
-            // Simple distortion: Apply clipping based on the distortion amount
-            float sampleValue = channelData[sample];
-
-            // Apply a simple tanh-based distortion (can be adjusted for more extreme effects)
-            sampleValue = std::tanh(sampleValue * distortionAmount);
-
-            // Assign the processed sample back to the buffer
-            channelData[sample] = sampleValue;
+            channelData[sample] *= rawGain;
         }
     }
 }
@@ -179,7 +173,8 @@ bool HiJUCEAudioProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* HiJUCEAudioProcessor::createEditor()
 {
-    return new HiJUCEAudioProcessorEditor (*this);
+//    return new HiJUCEAudioProcessorEditor (*this);
+    return new juce::GenericAudioProcessorEditor(*this);
 }
 
 //==============================================================================

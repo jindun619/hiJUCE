@@ -22,23 +22,46 @@ HiJUCEAudioProcessor::HiJUCEAudioProcessor()
                        ), treeState(*this, nullptr, "PARAMETERS", createParameterLayout())
 #endif
 {
+    treeState.addParameterListener("gain", this);
+    treeState.addParameterListener("phase", this);
+    treeState.addParameterListener("choice", this);
 }
 
 HiJUCEAudioProcessor::~HiJUCEAudioProcessor()
 {
+    treeState.removeParameterListener("gain", this);
+    treeState.removeParameterListener("phase", this);
+    treeState.removeParameterListener("choice", this);
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout HiJUCEAudioProcessor::createParameterLayout()
 {
     std::vector <std::unique_ptr<juce::RangedAudioParameter>> params;
     
+    juce::StringArray choices = {"Compressor", "EQ", "Reverb"};
+    
     auto pGain = std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{"gain", 1}, "Gain", -24.0, 24.0, 0.0);
+    auto pPhase = std::make_unique<juce::AudioParameterBool>(juce::ParameterID{"phase"}, "Phase", false);
+    auto pChoice = std::make_unique<juce::AudioParameterChoice>(juce::ParameterID{"choice"}, "Choice", choices, 0);
     
     params.push_back(std::move(pGain));
+    params.push_back(std::move(pPhase));
+    params.push_back(std::move(pChoice));
     
     return { params.begin(), params.end() };
 }
 
+void HiJUCEAudioProcessor::parameterChanged(const juce::String &parameterID, float newValue)
+{
+    if(parameterID == "gain") {
+        rawGain = juce::Decibels::decibelsToGain(newValue);
+        DBG("Gain is: " << newValue);
+    }
+    if(parameterID == "phase") {
+        phase = newValue;
+        DBG("Phase is: " << newValue);
+    }
+}
 
 //==============================================================================
 const juce::String HiJUCEAudioProcessor::getName() const
@@ -107,6 +130,8 @@ void HiJUCEAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock
 {
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
+    phase = *treeState.getRawParameterValue("phase");
+    rawGain = juce::Decibels::decibelsToGain(static_cast<float>(*treeState.getRawParameterValue("gain")));
 }
 
 void HiJUCEAudioProcessor::releaseResources()
@@ -149,18 +174,19 @@ void HiJUCEAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
 
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
-
-    float dbGain = *treeState.getRawParameterValue("gain");
-    float rawGain = juce::Decibels::decibelsToGain(dbGain);
     
+    // DSP Block
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
         auto* channelData = buffer.getWritePointer (channel);
 
-        // ..do something to the data...
         for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
         {
-            channelData[sample] *= rawGain;
+            if(phase) {
+                channelData[sample] *= rawGain * -1.0;
+            } else {
+                channelData[sample] *= rawGain;
+            }
         }
     }
 }

@@ -13,7 +13,7 @@
 //==============================================================================
 /**
 */
-class HiJUCEAudioProcessor  : public juce::AudioProcessor
+class HiJUCEAudioProcessor: public juce::AudioProcessor, juce::AudioProcessorValueTreeState::Listener
 {
 public:
     //==============================================================================
@@ -56,7 +56,11 @@ public:
     juce::AudioProcessorValueTreeState treeState;
 
 private:
+    float rawGain = 1.0;
+    bool phase = false;
+    
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+    void parameterChanged (const juce::String& parameterID, float newValue) override;
     
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (HiJUCEAudioProcessor)

@@ -199,8 +199,8 @@ bool HiJUCEAudioProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* HiJUCEAudioProcessor::createEditor()
 {
-//    return new HiJUCEAudioProcessorEditor (*this);
-    return new juce::GenericAudioProcessorEditor(*this);
+    return new HiJUCEAudioProcessorEditor (*this);
+//    return new juce::GenericAudioProcessorEditor(*this);
 }
 
 //==============================================================================
